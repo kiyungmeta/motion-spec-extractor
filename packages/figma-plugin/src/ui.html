@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- INLINE_CSS -->
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Motion Spec Extractor</h1>
+      <p class="subtitle">Import AE motion data and generate visual specs</p>
+    </div>
+
+    <div class="input-section">
+      <div class="tabs">
+        <button class="tab active" data-tab="upload">Upload JSON</button>
+        <button class="tab" data-tab="paste">Paste JSON</button>
+      </div>
+
+      <div class="tab-content active" id="tab-upload">
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-zone-icon">📄</div>
+          <p>Drop .json file here</p>
+          <p class="hint">or click to browse</p>
+          <input type="file" id="file-input" accept=".json" hidden>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-paste">
+        <textarea id="json-input" placeholder="Paste JSON data here..."></textarea>
+      </div>
+    </div>
+
+    <div class="preview-section" id="preview-section" style="display: none;">
+      <h2>Preview</h2>
+      <div class="preview-grid">
+        <div class="preview-item">
+          <span class="preview-label">Composition</span>
+          <span class="preview-value" id="preview-name">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Dimensions</span>
+          <span class="preview-value" id="preview-dims">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Frame Rate</span>
+          <span class="preview-value" id="preview-fps">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Duration</span>
+          <span class="preview-value" id="preview-duration">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Layers</span>
+          <span class="preview-value" id="preview-layers">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Animated</span>
+          <span class="preview-value" id="preview-animated">—</span>
+        </div>
+        <div class="preview-item">
+          <span class="preview-label">Keyframes</span>
+          <span class="preview-value" id="preview-keyframes">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-section" id="status-section" style="display: none;">
+      <div class="status-message" id="status-message"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="generate-btn" disabled>Generate Motion Spec</button>
+      <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- INLINE_JS -->
+</body>
+</html>

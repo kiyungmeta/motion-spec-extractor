@@ -1,0 +1,15 @@
+{
+  "name": "motion-spec-extractor",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/ae-extendscript",
+    "packages/figma-plugin"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:figma",
+    "build:shared": "npm -w packages/shared run build",
+    "build:figma": "npm -w packages/figma-plugin run build",
+    "clean": "npm -w packages/shared run clean && npm -w packages/figma-plugin run clean"
+  }
+}

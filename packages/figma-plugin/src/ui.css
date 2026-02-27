@@ -1,0 +1,217 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  color: var(--figma-color-text, #333);
+  background: var(--figma-color-bg, #fff);
+}
+
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+}
+
+.header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--figma-color-text-secondary, #666);
+  font-size: 11px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--figma-color-border, #e5e5e5);
+}
+
+.tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--figma-color-text-secondary, #666);
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab.active {
+  color: var(--figma-color-text-brand, #0d99ff);
+  border-bottom-color: var(--figma-color-text-brand, #0d99ff);
+}
+
+.tab:hover {
+  color: var(--figma-color-text, #333);
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--figma-color-border, #d4d4d4);
+  border-radius: 8px;
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+  border-color: var(--figma-color-text-brand, #0d99ff);
+  background: rgba(13, 153, 255, 0.04);
+}
+
+.drop-zone-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.drop-zone p {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+/* Textarea */
+#json-input {
+  width: 100%;
+  height: 120px;
+  padding: 8px;
+  border: 1px solid var(--figma-color-border, #d4d4d4);
+  border-radius: 6px;
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-size: 11px;
+  resize: vertical;
+  background: var(--figma-color-bg, #fff);
+  color: var(--figma-color-text, #333);
+}
+
+#json-input:focus {
+  outline: none;
+  border-color: var(--figma-color-text-brand, #0d99ff);
+}
+
+/* Preview */
+.preview-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.preview-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Status */
+.status-message {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.status-message.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.status-message.success {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.status-message.warning {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--figma-color-bg-brand, #0d99ff);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0b87e0;
+}
+
+.btn-secondary {
+  background: var(--figma-color-bg-secondary, #f5f5f5);
+  color: var(--figma-color-text, #333);
+}
+
+.btn-secondary:hover {
+  background: var(--figma-color-bg-tertiary, #e5e5e5);
+}

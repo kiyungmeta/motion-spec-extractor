@@ -1,0 +1,8 @@
+{
+  "name": "@motion-spec/ae-extendscript",
+  "version": "1.0.0",
+  "description": "After Effects ExtendScript motion data extractor",
+  "scripts": {
+    "build": "node scripts/build.js"
+  }
+}
