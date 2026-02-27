@@ -18,15 +18,26 @@ export function createHeaderSection(doc: MotionSpecDocument, width: number): Fra
 
   card.appendChild(createDivider(width - SPACING.lg * 2));
 
-  // Metadata grid - 2 rows of 3 items
+  // Metadata grid - row 1: comp info
   const metaRow1 = createAutoLayout('HORIZONTAL', SPACING.xxl);
   metaRow1.counterAxisSizingMode = 'AUTO';
 
   metaRow1.appendChild(createMetaItem('Dimensions', formatDimensions(comp.width, comp.height)));
   metaRow1.appendChild(createMetaItem('Frame Rate', comp.frameRate.toFixed(2) + ' fps'));
-  metaRow1.appendChild(createMetaItem('Duration', formatTime(comp.duration)));
+  metaRow1.appendChild(createMetaItem('Comp Duration', formatTime(comp.duration)));
+
+  // Calculate animation range and show it
+  const animRange = getCompositionAnimationRange(doc);
+  if (animRange) {
+    metaRow1.appendChild(createMetaItem('Animation Range',
+      formatTime(animRange.start) + ' – ' + formatTime(animRange.end) +
+      '  (' + formatTime(animRange.end - animRange.start) + ')'
+    ));
+  }
+
   card.appendChild(metaRow1);
 
+  // Metadata row 2: counts
   const metaRow2 = createAutoLayout('HORIZONTAL', SPACING.xxl);
   metaRow2.counterAxisSizingMode = 'AUTO';
 
@@ -52,6 +63,24 @@ export function createHeaderSection(doc: MotionSpecDocument, width: number): Fra
   }
 
   return card;
+}
+
+function getCompositionAnimationRange(doc: MotionSpecDocument): { start: number; end: number } | null {
+  let minTime = Infinity;
+  let maxTime = -Infinity;
+
+  for (const layer of doc.composition.layers) {
+    if (!layer.animationSummary.isAnimated) continue;
+    for (const prop of layer.animationSummary.properties) {
+      const propStart = prop.delay;
+      const propEnd = prop.delay + prop.duration;
+      if (propStart < minTime) minTime = propStart;
+      if (propEnd > maxTime) maxTime = propEnd;
+    }
+  }
+
+  if (minTime === Infinity) return null;
+  return { start: minTime, end: maxTime };
 }
 
 function createMetaItem(label: string, value: string): FrameNode {

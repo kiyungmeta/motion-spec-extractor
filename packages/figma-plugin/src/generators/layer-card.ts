@@ -3,7 +3,7 @@ import { COLORS, TYPOGRAPHY, SPACING, DIMENSIONS } from '../design-system/tokens
 import { createCard, createText, createAutoLayout, createBadge, createDivider } from '../design-system/primitives';
 import { createPropertyTable } from './property-table';
 import { createEasingCurve } from './easing-curve';
-import { columnWidth } from '../design-system/layout';
+import { formatTime } from '../utils/value-formatter';
 
 export function createLayerCard(layer: Layer, width: number): FrameNode {
   const card = createCard(width, SPACING.md, SPACING.md);
@@ -21,13 +21,38 @@ export function createLayerCard(layer: Layer, width: number): FrameNode {
 
   card.appendChild(headerRow);
 
-  // Time info
-  const timeInfo = createText(
-    'In: ' + layer.inPoint.toFixed(2) + 's  Out: ' + layer.outPoint.toFixed(2) + 's  Duration: ' + (layer.outPoint - layer.inPoint).toFixed(2) + 's',
+  // Time info row — show layer span and animation duration separately
+  const timeRow = createAutoLayout('HORIZONTAL', SPACING.xl);
+  timeRow.counterAxisSizingMode = 'AUTO';
+
+  // Layer span
+  const layerSpan = createAutoLayout('VERTICAL', SPACING.xs);
+  const spanLabel = createText('LAYER SPAN', TYPOGRAPHY.label, COLORS.textTertiary);
+  layerSpan.appendChild(spanLabel);
+  const spanValue = createText(
+    formatTime(layer.inPoint) + ' – ' + formatTime(layer.outPoint) + '  (' + formatTime(layer.outPoint - layer.inPoint) + ')',
     TYPOGRAPHY.bodySmall,
     COLORS.textSecondary
   );
-  card.appendChild(timeInfo);
+  layerSpan.appendChild(spanValue);
+  timeRow.appendChild(layerSpan);
+
+  // Animation duration (if animated)
+  if (layer.animationSummary.isAnimated && layer.animationSummary.properties.length > 0) {
+    const animRange = getLayerAnimationRange(layer);
+    const animInfo = createAutoLayout('VERTICAL', SPACING.xs);
+    const animLabel = createText('ANIMATION', TYPOGRAPHY.label, COLORS.accentBlue);
+    animInfo.appendChild(animLabel);
+    const animValue = createText(
+      formatTime(animRange.start) + ' – ' + formatTime(animRange.end) + '  (' + formatTime(animRange.end - animRange.start) + ')',
+      TYPOGRAPHY.body,
+      COLORS.textPrimary
+    );
+    animInfo.appendChild(animValue);
+    timeRow.appendChild(animInfo);
+  }
+
+  card.appendChild(timeRow);
 
   if (!layer.animationSummary.isAnimated) {
     const noAnim = createText('No keyframed animation', TYPOGRAPHY.body, COLORS.textTertiary);
@@ -84,6 +109,16 @@ export function createLayerCard(layer: Layer, width: number): FrameNode {
   }
 
   return card;
+}
+
+function getLayerAnimationRange(layer: Layer): { start: number; end: number } {
+  let start = Infinity;
+  let end = 0;
+  for (const prop of layer.animationSummary.properties) {
+    if (prop.delay < start) start = prop.delay;
+    if (prop.delay + prop.duration > end) end = prop.delay + prop.duration;
+  }
+  return { start: start === Infinity ? 0 : start, end };
 }
 
 function getUniqueEasings(layer: Layer): CubicBezier[] {

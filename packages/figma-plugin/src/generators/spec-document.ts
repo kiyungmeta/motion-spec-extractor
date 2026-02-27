@@ -6,6 +6,7 @@ import { createHeaderSection } from './header-section';
 import { createTimelineSection } from './timeline-section';
 import { createLayerCard } from './layer-card';
 import { createCodeSnippetSection } from './code-snippet';
+import { createPropertyTimeline } from './property-timeline';
 import { createStepChart } from './step-chart';
 
 export async function generateSpecDocument(doc: MotionSpecDocument): Promise<FrameNode> {
@@ -65,13 +66,38 @@ export async function generateSpecDocument(doc: MotionSpecDocument): Promise<Fra
   const codeSection = createCodeSnippetSection(doc.composition.layers, width);
   root.appendChild(codeSection);
 
-  // 5. Step Charts (for layers with 3+ keyframes)
+  // 5. Property Timelines (for animated layers)
+  const timelineLayers = doc.composition.layers.filter(
+    l => l.animationSummary.isAnimated
+  );
+
+  if (timelineLayers.length > 0) {
+    figma.notify('Creating property timelines...');
+    const tlSection = createSection('Property Timelines', width);
+
+    const tlTitle = figma.createText();
+    await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+    tlTitle.fontName = { family: 'Inter', style: 'Semi Bold' };
+    tlTitle.fontSize = 24;
+    tlTitle.characters = 'Property Timelines';
+    tlTitle.fills = [{ type: 'SOLID', color: { r: 0.1, g: 0.1, b: 0.12 } }];
+    tlSection.appendChild(tlTitle);
+
+    for (const layer of timelineLayers) {
+      const timeline = createPropertyTimeline(layer, width);
+      if (timeline) tlSection.appendChild(timeline);
+    }
+
+    root.appendChild(tlSection);
+  }
+
+  // 6. Step Breakdown (keyframe sequence tables + line graphs)
   const stepLayers = doc.composition.layers.filter(
-    l => l.animationSummary.properties.some(p => p.keyframeCount >= 3)
+    l => l.animationSummary.properties.some(p => p.keyframeCount >= 2)
   );
 
   if (stepLayers.length > 0) {
-    figma.notify('Creating step charts...');
+    figma.notify('Creating step breakdowns...');
     const stepSection = createSection('Step Breakdown', width);
 
     const stepTitle = figma.createText();

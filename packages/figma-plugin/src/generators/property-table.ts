@@ -8,6 +8,7 @@ export function createPropertyTable(properties: PropertySummary[], width: number
   table.name = 'Property Table';
   table.counterAxisSizingMode = 'FIXED';
   table.resize(width, 10);
+  table.clipsContent = false;
 
   // Header row
   const header = createTableRow(
@@ -51,25 +52,28 @@ function createTableRow(
   bgColor: RGB
 ): FrameNode {
   // Column widths: proportional
-  const colWidths = [0.28, 0.2, 0.2, 0.16, 0.16].map(pct => Math.floor(totalWidth * pct));
+  const colWidths = [0.25, 0.22, 0.22, 0.16, 0.15].map(pct => Math.floor(totalWidth * pct));
 
   const row = createAutoLayout('HORIZONTAL', 0);
   row.counterAxisSizingMode = 'AUTO';
   row.fills = [{ type: 'SOLID', color: bgColor }];
-  row.paddingTop = SPACING.xs;
-  row.paddingBottom = SPACING.xs;
+  row.paddingTop = SPACING.sm;
+  row.paddingBottom = SPACING.sm;
 
   for (let i = 0; i < cells.length; i++) {
     const cellFrame = figma.createFrame();
     cellFrame.resize(colWidths[i], 20);
     cellFrame.fills = [];
-    cellFrame.layoutMode = 'HORIZONTAL';
-    cellFrame.primaryAxisSizingMode = 'FIXED';
-    cellFrame.counterAxisSizingMode = 'AUTO';
+    cellFrame.layoutMode = 'VERTICAL';
+    cellFrame.primaryAxisSizingMode = 'AUTO';
+    cellFrame.counterAxisSizingMode = 'FIXED';
     cellFrame.paddingLeft = SPACING.sm;
     cellFrame.paddingRight = SPACING.sm;
+    cellFrame.clipsContent = false;
 
-    const text = createText(cells[i], textStyle, textColor);
+    // Pass width so text wraps within the cell
+    const textWidth = colWidths[i] - SPACING.sm * 2;
+    const text = createText(cells[i], textStyle, textColor, textWidth);
     cellFrame.appendChild(text);
     row.appendChild(cellFrame);
   }

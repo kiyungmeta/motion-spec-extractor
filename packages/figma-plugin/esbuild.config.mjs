@@ -5,11 +5,12 @@ import path from 'path';
 const isWatch = process.argv.includes('--watch');
 
 // Build the sandbox code (code.ts → dist/code.js)
+// Figma's sandbox VM requires ES6 target
 const codeBuild = {
   entryPoints: ['src/code.ts'],
   bundle: true,
   outfile: 'dist/code.js',
-  target: 'es2020',
+  target: 'es2017',
   format: 'iife',
   sourcemap: false,
   minify: !isWatch,
@@ -20,7 +21,7 @@ const uiBuild = {
   entryPoints: ['src/ui.ts'],
   bundle: true,
   outfile: 'dist/ui.js',
-  target: 'es2020',
+  target: 'es2017',
   format: 'iife',
   sourcemap: false,
   minify: !isWatch,

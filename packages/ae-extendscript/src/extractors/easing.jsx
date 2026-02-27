@@ -38,30 +38,43 @@ function interpolationTypeToString(type) {
 }
 
 /**
+ * Find the dimension index with the largest absolute value change.
+ * Falls back to 0 if values are scalar or no change is detected.
+ *
+ * @param {*} startValue
+ * @param {*} endValue
+ * @returns {Object} { dimIndex, valueChange }
+ */
+function findBestDimension(startValue, endValue) {
+  var bestDim = 0;
+  var bestChange = 0;
+  var i, dimChange;
+
+  if (typeof startValue === "number" && typeof endValue === "number") {
+    return { dimIndex: 0, valueChange: endValue - startValue };
+  }
+
+  if (startValue instanceof Array && endValue instanceof Array) {
+    var len = Math.min(startValue.length, endValue.length);
+    for (i = 0; i < len; i++) {
+      dimChange = Math.abs(endValue[i] - startValue[i]);
+      if (dimChange > Math.abs(bestChange)) {
+        bestChange = endValue[i] - startValue[i];
+        bestDim = i;
+      }
+    }
+    return { dimIndex: bestDim, valueChange: bestChange };
+  }
+
+  return { dimIndex: 0, valueChange: 0 };
+}
+
+/**
  * Convert AE temporal easing (speed / influence) to a CSS cubic-bezier
  * approximation *without* knowing the value change between keyframes.
  *
- * This is the simplified form -- use convertEasingWithValues when start and
- * end values are available for more accurate results.
- *
- * Mathematical basis
- * ------------------
- * AE represents a Bezier segment between two keyframes with:
- *   - outInfluence  (% of segment duration for the first control point's x)
- *   - outSpeed      (units / second at the outgoing tangent)
- *   - inInfluence   (% of segment duration for the second control point's x)
- *   - inSpeed       (units / second at the incoming tangent)
- *
- * CSS cubic-bezier(x1, y1, x2, y2) is normalised to [0,1] on both axes.
- *
- *   x1 = outInfluence / 100
- *   x2 = 1 - inInfluence / 100
- *
- * The y-coordinates depend on the ratio  speed / linearSpeed  where
- * linearSpeed = |valueChange| / duration.  Without valueChange we fall back
- * to the convention used by Lottie/Bodymovin:
- *   speed === 0  -->  flat tangent  (y1 = 0, y2 = 1)
- *   speed !== 0  -->  assume linear (y1 = x1, y2 = x2)
+ * This is the simplified fallback -- use convertEasingWithValues when start
+ * and end values are available for accurate results.
  *
  * @param {Array} outEase      - keyOutTemporalEase of the current keyframe.
  * @param {Array} inEaseNext   - keyInTemporalEase  of the next keyframe.
@@ -116,6 +129,12 @@ function convertEasingToCubicBezier(outEase, inEaseNext, duration) {
  * animated property into account so that the Hermite-to-Bezier conversion
  * is mathematically correct.
  *
+ * Key fix: for multi-dimensional properties (e.g. Position [x,y]), the
+ * function finds the dimension with the largest value change and uses
+ * that dimension's speed/influence for the conversion. This prevents
+ * returning linear when only one axis changes (e.g. Y bounces but X
+ * stays constant).
+ *
  * Derivation
  * ----------
  * Given segment duration D and value change dV = endValue - startValue:
@@ -134,17 +153,6 @@ function convertEasingToCubicBezier(outEase, inEaseNext, duration) {
  *   x2 = 1 - inInfluence
  *   y2 = 1 - inInfluence * |inSpeed| / linearSpeed
  *
- * Verification with common presets:
- *   Easy Ease  (speed=0, influence=33.33%):
- *     x1 = 0.3333, y1 = 0.3333 * 0 / ls = 0
- *     x2 = 0.6667, y2 = 1 - 0.3333 * 0 / ls = 1
- *     --> cubic-bezier(0.3333, 0, 0.6667, 1)
- *
- *   Linear (speed=linearSpeed, influence=33.33%):
- *     x1 = 0.3333, y1 = 0.3333 * ls / ls = 0.3333
- *     x2 = 0.6667, y2 = 1 - 0.3333 * ls / ls = 0.6667
- *     --> cubic-bezier(0.3333, 0.3333, 0.6667, 0.6667)
- *
  * @param {Array}  outEase      - keyOutTemporalEase of the current keyframe.
  * @param {Array}  inEaseNext   - keyInTemporalEase  of the next keyframe.
  * @param {number} duration     - Time (seconds) between the two keyframes.
@@ -153,15 +161,10 @@ function convertEasingToCubicBezier(outEase, inEaseNext, duration) {
  * @returns {Object} {x1, y1, x2, y2, css}
  */
 function convertEasingWithValues(outEase, inEaseNext, duration, startValue, endValue) {
-  var valueChange = 0;
-  var i;
-
-  // Determine scalar value change (use first dimension for arrays)
-  if (typeof startValue === "number" && typeof endValue === "number") {
-    valueChange = endValue - startValue;
-  } else if (startValue instanceof Array && endValue instanceof Array) {
-    valueChange = endValue[0] - startValue[0];
-  }
+  // Find the dimension with the most significant value change
+  var best = findBestDimension(startValue, endValue);
+  var valueChange = best.valueChange;
+  var dimIndex = best.dimIndex;
 
   // Guard: if value change or duration is negligible, return linear
   if (Math.abs(valueChange) < 0.0001 || duration < 0.0001) {
@@ -176,10 +179,15 @@ function convertEasingWithValues(outEase, inEaseNext, duration, startValue, endV
 
   var linearSpeed = Math.abs(valueChange / duration);
 
-  var outSpeed = outEase[0].speed;
-  var outInfluence = outEase[0].influence / 100;
-  var inSpeed = inEaseNext[0].speed;
-  var inInfluence = inEaseNext[0].influence / 100;
+  // Use the ease data from the dimension with the largest change
+  // (clamp dimIndex to the available ease array length)
+  var easeDim = Math.min(dimIndex, outEase.length - 1);
+  var easeInDim = Math.min(dimIndex, inEaseNext.length - 1);
+
+  var outSpeed = outEase[easeDim].speed;
+  var outInfluence = outEase[easeDim].influence / 100;
+  var inSpeed = inEaseNext[easeInDim].speed;
+  var inInfluence = inEaseNext[easeInDim].influence / 100;
 
   // Normalised x coordinates (time axis)
   var x1 = outInfluence;

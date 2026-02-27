@@ -53,6 +53,21 @@ export const COLORS = {
   timelineKeyframe: { r: 0.95, g: 0.55, b: 0.2 } as RGB,
   timelineRowEven: { r: 0.97, g: 0.97, b: 0.98 } as RGB,
   timelineRowOdd: { r: 1, g: 1, b: 1 } as RGB,
+
+  // Property timeline colors (by property name)
+  propertyColors: {
+    'Position': { r: 0.25, g: 0.47, b: 0.96 },
+    'X Position': { r: 0.25, g: 0.47, b: 0.96 },
+    'Y Position': { r: 0.30, g: 0.52, b: 0.98 },
+    'Z Position': { r: 0.20, g: 0.42, b: 0.90 },
+    'Scale': { r: 0.18, g: 0.72, b: 0.53 },
+    'Rotation': { r: 0.55, g: 0.36, b: 0.86 },
+    'X Rotation': { r: 0.55, g: 0.36, b: 0.86 },
+    'Y Rotation': { r: 0.55, g: 0.36, b: 0.86 },
+    'Z Rotation': { r: 0.55, g: 0.36, b: 0.86 },
+    'Opacity': { r: 0.95, g: 0.55, b: 0.2 },
+    'Anchor Point': { r: 0.6, g: 0.6, b: 0.65 },
+  } as Record<string, RGB>,
 };
 
 // ============ Typography ============

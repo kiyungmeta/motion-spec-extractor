@@ -2,6 +2,35 @@ import type { Composition, Layer } from '@motion-spec/shared';
 import { COLORS, TYPOGRAPHY, SPACING, DIMENSIONS } from '../design-system/tokens';
 import { createCard, createText, createRect, createAutoLayout, setFill } from '../design-system/primitives';
 
+// Calculate the effective time range from keyframe data (not full comp duration)
+function getEffectiveTimeRange(comp: Composition): { start: number; end: number } {
+  let minTime = Infinity;
+  let maxTime = -Infinity;
+
+  for (const layer of comp.layers) {
+    if (!layer.animationSummary.isAnimated) continue;
+    for (const prop of layer.animationSummary.properties) {
+      const propStart = prop.delay;
+      const propEnd = prop.delay + prop.duration;
+      if (propStart < minTime) minTime = propStart;
+      if (propEnd > maxTime) maxTime = propEnd;
+    }
+  }
+
+  // No animations found — fall back to comp duration
+  if (minTime === Infinity) {
+    return { start: 0, end: comp.duration };
+  }
+
+  // Add 15% padding on each side for breathing room
+  const range = maxTime - minTime;
+  const padding = Math.max(range * 0.15, 0.2);
+  return {
+    start: Math.max(0, minTime - padding),
+    end: Math.min(comp.duration, maxTime + padding),
+  };
+}
+
 export function createTimelineSection(comp: Composition, width: number): FrameNode {
   const card = createCard(width, SPACING.lg, SPACING.sm);
   card.name = 'Timeline';
@@ -9,6 +38,20 @@ export function createTimelineSection(comp: Composition, width: number): FrameNo
   // Section title
   const title = createText('Layer Timeline', TYPOGRAPHY.heading2, COLORS.textPrimary);
   card.appendChild(title);
+
+  // Calculate effective time range (zoom to animation)
+  const timeRange = getEffectiveTimeRange(comp);
+  const displayDuration = timeRange.end - timeRange.start;
+
+  // Show range info if different from comp duration
+  if (timeRange.start > 0 || timeRange.end < comp.duration) {
+    const rangeInfo = createText(
+      'Showing ' + timeRange.start.toFixed(2) + 's – ' + timeRange.end.toFixed(2) + 's  (comp duration: ' + comp.duration.toFixed(2) + 's)',
+      TYPOGRAPHY.bodySmall,
+      COLORS.textTertiary
+    );
+    card.appendChild(rangeInfo);
+  }
 
   // Timeline container (non-auto-layout for absolute positioning)
   const labelWidth = 150;
@@ -21,10 +64,11 @@ export function createTimelineSection(comp: Composition, width: number): FrameNo
   container.name = 'Timeline Chart';
   container.resize(width - SPACING.lg * 2, totalHeight);
   container.fills = [];
+  container.clipsContent = true;
   card.appendChild(container);
 
   // Time ruler
-  createTimeRuler(container, labelWidth, timelineWidth, comp.duration, headerHeight);
+  createTimeRuler(container, labelWidth, timelineWidth, timeRange.start, displayDuration, headerHeight);
 
   // Layer rows
   for (let i = 0; i < comp.layers.length; i++) {
@@ -48,9 +92,11 @@ export function createTimelineSection(comp: Composition, width: number): FrameNo
     nameText.y = y + (rowHeight - 16) / 2;
     container.appendChild(nameText);
 
-    // Layer bar
-    const barStart = (layer.inPoint / comp.duration) * timelineWidth;
-    const barWidth = Math.max(2, ((layer.outPoint - layer.inPoint) / comp.duration) * timelineWidth);
+    // Layer bar — position relative to the effective time range
+    const barStartTime = Math.max(layer.inPoint, timeRange.start);
+    const barEndTime = Math.min(layer.outPoint, timeRange.end);
+    const barStart = ((barStartTime - timeRange.start) / displayDuration) * timelineWidth;
+    const barWidth = Math.max(2, ((barEndTime - barStartTime) / displayDuration) * timelineWidth);
     const barColor = COLORS.layerColors[layer.type] || COLORS.accentBlue;
 
     const bar = createRect(barWidth, rowHeight - 12, barColor, 4);
@@ -58,17 +104,34 @@ export function createTimelineSection(comp: Composition, width: number): FrameNo
     bar.y = y + 6;
     container.appendChild(bar);
 
-    // Keyframe diamonds
+    // Keyframe diamonds — positioned by actual keyframe times
     if (layer.animationSummary.isAnimated) {
       for (const propSummary of layer.animationSummary.properties) {
         if (propSummary.keyframeCount > 0) {
-          // Mark start and end of each property animation
-          const startX = labelWidth + SPACING.md + ((propSummary.delay) / comp.duration) * timelineWidth;
-          const endX = labelWidth + SPACING.md + ((propSummary.delay + propSummary.duration) / comp.duration) * timelineWidth;
+          // Place diamonds at start and end of each property animation
+          const kfStartTime = propSummary.delay;
+          const kfEndTime = propSummary.delay + propSummary.duration;
 
-          addKeyframeDiamond(container, startX, y + rowHeight / 2);
-          if (propSummary.duration > 0) {
-            addKeyframeDiamond(container, endX, y + rowHeight / 2);
+          // Also place intermediate keyframe markers if 3+
+          if (propSummary.keyframeCount === 2) {
+            addKeyframeDiamond(container,
+              labelWidth + SPACING.md + ((kfStartTime - timeRange.start) / displayDuration) * timelineWidth,
+              y + rowHeight / 2);
+            if (propSummary.duration > 0) {
+              addKeyframeDiamond(container,
+                labelWidth + SPACING.md + ((kfEndTime - timeRange.start) / displayDuration) * timelineWidth,
+                y + rowHeight / 2);
+            }
+          } else {
+            // For 3+ keyframes, place evenly spaced diamonds
+            for (let k = 0; k < propSummary.keyframeCount; k++) {
+              const t = propSummary.keyframeCount > 1
+                ? kfStartTime + (kfEndTime - kfStartTime) * (k / (propSummary.keyframeCount - 1))
+                : kfStartTime;
+              addKeyframeDiamond(container,
+                labelWidth + SPACING.md + ((t - timeRange.start) / displayDuration) * timelineWidth,
+                y + rowHeight / 2);
+            }
           }
         }
       }
@@ -82,15 +145,17 @@ function createTimeRuler(
   container: FrameNode,
   labelWidth: number,
   timelineWidth: number,
+  startTime: number,
   duration: number,
   height: number
 ): void {
-  // Determine tick interval
-  let tickInterval = 0.5;
+  // Determine tick interval based on displayed duration
+  let tickInterval: number;
   if (duration > 10) tickInterval = 2;
   else if (duration > 5) tickInterval = 1;
   else if (duration > 2) tickInterval = 0.5;
-  else tickInterval = 0.25;
+  else if (duration > 0.5) tickInterval = 0.25;
+  else tickInterval = 0.1;
 
   // Ruler line
   const rulerLine = createRect(timelineWidth, 1, COLORS.timelineRuler);
@@ -98,9 +163,12 @@ function createTimeRuler(
   rulerLine.y = height - 1;
   container.appendChild(rulerLine);
 
+  // Round start to nearest tick
+  const firstTick = Math.ceil(startTime / tickInterval) * tickInterval;
+
   // Time labels and ticks
-  for (let t = 0; t <= duration; t += tickInterval) {
-    const x = labelWidth + SPACING.md + (t / duration) * timelineWidth;
+  for (let t = firstTick; t <= startTime + duration + 0.001; t += tickInterval) {
+    const x = labelWidth + SPACING.md + ((t - startTime) / duration) * timelineWidth;
 
     // Tick mark
     const tick = createRect(1, 8, COLORS.timelineRuler);
@@ -109,7 +177,8 @@ function createTimeRuler(
     container.appendChild(tick);
 
     // Time label
-    const label = createText(t.toFixed(1) + 's', TYPOGRAPHY.caption, COLORS.textTertiary);
+    const labelStr = t < 1 ? (t * 1000).toFixed(0) + 'ms' : t.toFixed(2) + 's';
+    const label = createText(labelStr, TYPOGRAPHY.caption, COLORS.textTertiary);
     label.x = x - 10;
     label.y = height - 24;
     container.appendChild(label);
@@ -117,14 +186,15 @@ function createTimeRuler(
 }
 
 function addKeyframeDiamond(container: FrameNode, x: number, y: number): void {
-  const size = 8;
-  const diamond = figma.createPolygon();
-  diamond.pointCount = 4;
+  const size = 10;
+  // Use a rotated rectangle as a diamond (more compatible than createPolygon)
+  const diamond = figma.createRectangle();
   diamond.resize(size, size);
-  diamond.rotation = 0;
+  diamond.rotation = 45;
   diamond.x = x - size / 2;
   diamond.y = y - size / 2;
   diamond.fills = [{ type: 'SOLID', color: COLORS.timelineKeyframe }];
+  diamond.cornerRadius = 1;
   container.appendChild(diamond);
 }
 
